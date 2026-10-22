@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificador de Segurança de Sites</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Scanner de Segurança</h2>
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Ex: https://exemplo.com">
+            <button onclick="analisarUrl()">Analisar</button>
+        </div>
+
+        <div id="loading" style="display:none; text-align:center; margin-top:15px; color:#666;">
+            Analisando site, aguarde...
+        </div>
+
+        <div id="resultBox" class="result-box"></div>
+    </div>
+
+    <script>
+        async function analisarUrl() {
+            const urlInput = document.getElementById('urlInput').value;
+            const resultBox = document.getElementById('resultBox');
+            const loading = document.getElementById('loading');
+
+            if (!urlInput) {
+                alert('Por favor, digite uma URL!');
+                return;
+            }
+
+            // Limpa resultados anteriores e ativa o loading
+            resultBox.style.display = 'none';
+            loading.style.display = 'block';
+
+            try {
+                // Requisição POST para o Back-end
+                const response = await fetch('http://localhost:3000/api/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: urlInput })
+                });
+
+                const data = await response.json();
+                loading.style.display = 'none';
+                resultBox.style.display = 'block';
+
+                if (response.ok) {
+                    // Monta a lista detalhada de ameaças caso o back-end tenha retornado
+                    let threatsHtml = '';
+                    if (data.reputation.threats && data.reputation.threats.length > 0) {
+                        threatsHtml = `
+                            <h4 style="color: #dc3545; margin-top: 15px;">Motores que detetaram ameaças:</h4>
+                            <ul style="font-size: 13px;">
+                        `;
+                        data.reputation.threats.forEach(item => {
+                            threatsHtml += `<li><strong>${item.engine}:</strong> <span class="danger">${item.result || item.category}</span></li>`;
+                        });
+                        threatsHtml += `</ul>`;
+                    } else if (data.reputation.stats) {
+                        threatsHtml = `<p style="margin-top: 15px;" class="safe">Nenhum motor detetou malícia específica.</p>`;
+                    } else {
+                        threatsHtml = `<p style="margin-top: 15px;">${data.reputation.message || 'Sem dados adicionais.'}</p>`;
+                    }
+
+                    // Monta o HTML consolidado com SSL, Estatísticas Gerais e Detalhes
+                    resultBox.innerHTML = `
+                        <h3>Resultados para:</h3>
+                        <p><strong>Domínio:</strong> ${data.domain}</p>
+                        <p><strong>Status SSL:</strong> <span class="${data.ssl.valid ? 'safe' : 'danger'}">${data.ssl.message}</span></p>
+                        <hr style="border:0; border-top:1px solid #ddd; margin:10px 0;">
+                        ${data.reputation.stats ? `
+                            <h4>Estatísticas gerais:</h4>
+                            <ul>
+                                <li>Maliciosos: <span class="${data.reputation.stats.malicious > 0 ? 'danger' : 'safe'}">${data.reputation.stats.malicious ?? 0}</span></li>
+                                <li>Suspeitos: ${data.reputation.stats.suspicious ?? 0}</li>
+                                <li>Inofensivos: ${data.reputation.stats.harmless ?? 0}</li>
+                            </ul>
+                        ` : ''}
+                        ${threatsHtml}
+                    `;
+                } else {
+                    resultBox.innerHTML = `<p class="danger">Erro: ${data.error}</p>`;
+                }
+
+            } catch (error) {
+                loading.style.display = 'none';
+                resultBox.style.display = 'block';
+                resultBox.innerHTML = `<p class="danger">Erro de conexão com o servidor Back-end.</p>`;
+            }
+        }
+    </script>
+</body>
+
+</html>
