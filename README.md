@@ -35,3 +35,7 @@ Certifique-se de ter instalado em sua máquina:
 1. **Clone o repositório ou acesse a pasta do projeto:**
    ```bash
    cd url-checker
+
+## 📄 Licença
+
+Este projeto está licenciado sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
